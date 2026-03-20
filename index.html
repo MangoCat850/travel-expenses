@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Travel Expense Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg: #f0f4f8;
     --card: #ffffff;
     --accent: #4f6ef7;
-    --accent2: #f7924f;
     --text: #1a1a2e;
     --muted: #6b7280;
     --border: #e2e8f0;
     --red: #ef4444;
-    --green: #22c55e;
     --cat-food: #f59e0b;
     --cat-commute: #3b82f6;
     --cat-leisure: #a855f7;
@@ -41,8 +41,26 @@
     gap: 0.75rem;
     box-shadow: 0 2px 8px rgba(79,110,247,0.3);
   }
-  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header h1 { font-size: 1.4rem; font-weight: 700; flex: 1; }
   header span { font-size: 1.6rem; }
+
+  .sync-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.15);
+  }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #fbbf24;
+    transition: background 0.3s;
+  }
+  .sync-dot.connected { background: #4ade80; }
+  .sync-dot.error { background: #f87171; }
 
   main {
     max-width: 1100px;
@@ -75,12 +93,11 @@
     gap: 0.4rem;
   }
 
-  /* FORM */
   form { display: flex; flex-direction: column; gap: 0.85rem; }
 
   label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; display: block; }
 
-  input[type=text], input[type=number], select {
+  input[type=text], input[type=number], input[type=date], select {
     width: 100%;
     padding: 0.6rem 0.75rem;
     border: 1.5px solid var(--border);
@@ -95,20 +112,6 @@
     border-color: var(--accent);
     background: #fff;
   }
-
-  input[type=date] {
-    width: 100%;
-    padding: 0.6rem 0.75rem;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    color: var(--text);
-    background: #fafafa;
-    transition: border-color 0.15s;
-    outline: none;
-  }
-
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 
   .currency-amount {
     display: grid;
@@ -145,7 +148,7 @@
     transition: all 0.15s;
     color: var(--muted);
   }
-  .cat-btn.active-food { border-color: var(--cat-food); background: #fef9ec; color: var(--cat-food); }
+  .cat-btn.active-food    { border-color: var(--cat-food);    background: #fef9ec; color: var(--cat-food); }
   .cat-btn.active-commute { border-color: var(--cat-commute); background: #eff6ff; color: var(--cat-commute); }
   .cat-btn.active-leisure { border-color: var(--cat-leisure); background: #faf5ff; color: var(--cat-leisure); }
 
@@ -163,11 +166,10 @@
   }
   .add-btn:hover { background: #3a58e0; }
   .add-btn:active { transform: scale(0.98); }
+  .add-btn:disabled { background: #a5b4fc; cursor: not-allowed; }
 
-  /* RIGHT PANEL */
   .right-panel { display: flex; flex-direction: column; gap: 1.5rem; }
 
-  /* SUMMARY PILLS */
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -186,7 +188,6 @@
   .pill-C { color: var(--C); }
   .pill-total { color: var(--text); }
 
-  /* CHARTS */
   .charts-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -198,7 +199,6 @@
   }
   .chart-wrap { position: relative; height: 200px; }
 
-  /* EXPENSES TABLE */
   .expense-list { display: flex; flex-direction: column; gap: 0.5rem; }
 
   .expense-item {
@@ -210,20 +210,20 @@
     border: 1.5px solid var(--border);
     background: #fafafa;
     transition: border-color 0.15s;
+    animation: fadeIn 0.2s ease;
   }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .expense-item:hover { border-color: #cbd5e1; }
 
-  .cat-dot {
-    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  }
-  .dot-food { background: var(--cat-food); }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-food    { background: var(--cat-food); }
   .dot-commute { background: var(--cat-commute); }
   .dot-leisure { background: var(--cat-leisure); }
 
   .expense-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
-  .expense-cat { font-size: 0.72rem; color: var(--muted); text-transform: capitalize; }
+  .expense-cat   { font-size: 0.72rem; color: var(--muted); text-transform: capitalize; }
 
-  .expense-amount { font-weight: 700; font-size: 0.95rem; text-align: right; }
+  .expense-amount   { font-weight: 700; font-size: 0.95rem; text-align: right; }
   .expense-currency { font-size: 0.7rem; color: var(--muted); text-align: right; }
 
   .payer-badge {
@@ -237,8 +237,7 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: #cbd5e1; font-size: 1.1rem; padding: 0.1rem 0.25rem;
-    border-radius: 4px; transition: color 0.15s;
-    flex-shrink: 0;
+    border-radius: 4px; transition: color 0.15s; flex-shrink: 0;
   }
   .delete-btn:hover { color: var(--red); }
 
@@ -278,12 +277,7 @@
   }
   .clear-btn:hover { border-color: var(--red); color: var(--red); }
 
-  .filter-row {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-  }
+  .filter-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
   .filter-chip {
     padding: 0.25rem 0.65rem;
     border-radius: 20px;
@@ -297,12 +291,7 @@
   }
   .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
 
-  .totals-by-currency {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
+  .totals-by-currency { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; justify-content: center; }
   .currency-tag {
     font-size: 0.75rem;
     font-weight: 700;
@@ -318,10 +307,14 @@
 <header>
   <span>✈️</span>
   <h1>Travel Expense Tracker</h1>
+  <div class="sync-badge">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncLabel">Connecting…</span>
+  </div>
 </header>
 
 <main>
-  <!-- LEFT: ADD EXPENSE FORM -->
+  <!-- FORM -->
   <div class="card">
     <h2>➕ Add Expense</h2>
     <form id="expenseForm">
@@ -367,14 +360,13 @@
         <input type="hidden" id="payer" value="J">
       </div>
 
-      <button type="submit" class="add-btn">Add Expense</button>
+      <button type="submit" class="add-btn" id="addBtn">Add Expense</button>
     </form>
   </div>
 
   <!-- RIGHT PANEL -->
   <div class="right-panel">
 
-    <!-- SUMMARY -->
     <div class="summary-grid">
       <div class="summary-pill">
         <div class="pill-label">J Paid</div>
@@ -392,7 +384,6 @@
       </div>
     </div>
 
-    <!-- CHARTS -->
     <div class="card">
       <h2>📊 Breakdown</h2>
       <div class="charts-grid">
@@ -407,7 +398,6 @@
       </div>
     </div>
 
-    <!-- EXPENSE LIST -->
     <div class="card">
       <div class="section-header">
         <h2>🧾 Expenses</h2>
@@ -429,7 +419,7 @@
       <div class="expense-list" id="expenseList">
         <div class="empty-state">
           <div class="empty-icon">🗺️</div>
-          <div>No expenses yet.<br>Add your first one!</div>
+          <div>Connecting to database…</div>
         </div>
       </div>
     </div>
@@ -438,8 +428,40 @@
 </main>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
-let expenses = JSON.parse(localStorage.getItem('travel_expenses') || '[]');
+// ── FIREBASE ──────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBnpQJPhS8bmNmb0se0hph-tP3KjBLz_I8",
+  authDomain: "travel-expenses-9bb89.firebaseapp.com",
+  databaseURL: "https://travel-expenses-9bb89-default-rtdb.firebaseio.com",
+  projectId: "travel-expenses-9bb89",
+  storageBucket: "travel-expenses-9bb89.firebasestorage.app",
+  messagingSenderId: "336427382071",
+  appId: "1:336427382071:web:1ccb4cb78c3872ed8096b2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const expensesRef = db.ref('expenses');
+
+// ── CONNECTION STATUS ─────────────────────────────────────────────────────────
+db.ref('.info/connected').on('value', snap => {
+  const connected = snap.val();
+  const dot   = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  const btn   = document.getElementById('addBtn');
+  if (connected) {
+    dot.className = 'sync-dot connected';
+    label.textContent = 'Live';
+    btn.disabled = false;
+  } else {
+    dot.className = 'sync-dot error';
+    label.textContent = 'Offline';
+    btn.disabled = true;
+  }
+});
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let expenses = [];
 let activeFilter = 'all';
 let catChart, payerChart;
 
@@ -453,30 +475,32 @@ function setDefaultDate() {
   document.getElementById('date').value = `2026-${mm}-${dd}`;
 }
 
-function save() {
-  localStorage.setItem('travel_expenses', JSON.stringify(expenses));
-}
+// ── REAL-TIME LISTENER ────────────────────────────────────────────────────────
+expensesRef.on('value', snapshot => {
+  const data = snapshot.val();
+  expenses = data
+    ? Object.values(data).sort((a, b) => b.id - a.id)
+    : [];
+  render();
+});
 
 // ── FORM TOGGLES ──────────────────────────────────────────────────────────────
 document.querySelectorAll('.cat-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.cat-btn').forEach(b => b.className = 'cat-btn');
-    const cat = btn.dataset.cat;
-    btn.classList.add('active-' + cat);
-    document.getElementById('category').value = cat;
+    btn.classList.add('active-' + btn.dataset.cat);
+    document.getElementById('category').value = btn.dataset.cat;
   });
 });
 
 document.querySelectorAll('.payer-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.payer-btn').forEach(b => b.className = 'payer-btn');
-    const p = btn.dataset.payer;
-    btn.classList.add('active-' + p);
-    document.getElementById('payer').value = p;
+    btn.classList.add('active-' + btn.dataset.payer);
+    document.getElementById('payer').value = btn.dataset.payer;
   });
 });
 
-// ── FILTER CHIPS ──────────────────────────────────────────────────────────────
 document.querySelectorAll('.filter-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
@@ -498,27 +522,32 @@ document.getElementById('expenseForm').addEventListener('submit', e => {
 
   if (!title || isNaN(amount) || amount <= 0 || !date) return;
 
-  expenses.unshift({ id: Date.now(), title, category, amount, currency, payer, date });
-  save();
-  render();
+  const id = Date.now();
+  expensesRef.child(id).set({ id, title, category, amount, currency, payer, date });
+
   e.target.reset();
   setDefaultDate();
   document.getElementById('title').focus();
+
+  // restore toggles to last-used state
+  document.querySelectorAll('.cat-btn').forEach(b => b.className = 'cat-btn');
+  document.querySelector(`.cat-btn[data-cat="${category}"]`).classList.add('active-' + category);
+  document.getElementById('category').value = category;
+
+  document.querySelectorAll('.payer-btn').forEach(b => b.className = 'payer-btn');
+  document.querySelector(`.payer-btn[data-payer="${payer}"]`).classList.add('active-' + payer);
+  document.getElementById('payer').value = payer;
 });
 
-// ── DELETE ────────────────────────────────────────────────────────────────────
+// ── DELETE / CLEAR ────────────────────────────────────────────────────────────
 function deleteExpense(id) {
-  expenses = expenses.filter(e => e.id !== id);
-  save();
-  render();
+  expensesRef.child(id).remove();
 }
 
 function clearAll() {
   if (expenses.length === 0) return;
-  if (confirm('Clear all expenses?')) {
-    expenses = [];
-    save();
-    render();
+  if (confirm('Clear all expenses for everyone?')) {
+    expensesRef.remove();
   }
 }
 
@@ -545,8 +574,7 @@ function renderSummary() {
     }
     const primary = entries.sort((a,b) => b[1]-a[1])[0];
     document.getElementById('total'+p).textContent =
-      CURRENCY_SYMBOLS[primary[0]] + primary[1].toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
-
+      CURRENCY_SYMBOLS[primary[0]] + primary[1].toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2});
     document.getElementById('total'+p+'-breakdown').innerHTML = entries.map(([cur, amt]) =>
       `<span class="currency-tag">${CURRENCY_LABELS[cur]}: ${CURRENCY_SYMBOLS[cur]}${amt.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2})}</span>`
     ).join('');
@@ -593,15 +621,10 @@ function renderList() {
 }
 
 function renderCharts() {
-  // Category totals (count-based for cross-currency fairness)
-  const catCounts = { food: 0, commute: 0, leisure: 0 };
+  const catCounts   = { food: 0, commute: 0, leisure: 0 };
   const payerCounts = { J: 0, C: 0 };
-  expenses.forEach(e => {
-    catCounts[e.category]++;
-    payerCounts[e.payer]++;
-  });
+  expenses.forEach(e => { catCounts[e.category]++; payerCounts[e.payer]++; });
 
-  // Category chart
   if (catChart) catChart.destroy();
   catChart = new Chart(document.getElementById('catChart'), {
     type: 'doughnut',
@@ -610,69 +633,39 @@ function renderCharts() {
       datasets: [{
         data: [catCounts.food, catCounts.commute, catCounts.leisure],
         backgroundColor: ['#f59e0b', '#3b82f6', '#a855f7'],
-        borderWidth: 2,
-        borderColor: '#fff',
-        hoverOffset: 6
+        borderWidth: 2, borderColor: '#fff', hoverOffset: 6
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { font: { size: 11 }, padding: 10, usePointStyle: true }
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}`
-          }
-        }
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}` } }
       }
     }
   });
 
-  // Payer chart
   if (payerChart) payerChart.destroy();
   payerChart = new Chart(document.getElementById('payerChart'), {
     type: 'bar',
     data: {
       labels: ['J', 'C'],
-      datasets: [{
-        label: 'Expenses',
-        data: [payerCounts.J, payerCounts.C],
-        backgroundColor: ['#4f6ef7', '#f7924f'],
-        borderRadius: 8,
-        borderSkipped: false
-      }]
+      datasets: [{ label: 'Expenses', data: [payerCounts.J, payerCounts.C], backgroundColor: ['#4f6ef7', '#f7924f'], borderRadius: 8, borderSkipped: false }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}`
-          }
-        }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}` } }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { stepSize: 1, font: { size: 11 } },
-          grid: { color: '#f0f4f8' }
-        },
-        x: {
-          ticks: { font: { size: 13, weight: 'bold' } },
-          grid: { display: false }
-        }
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f0f4f8' } },
+        x: { ticks: { font: { size: 13, weight: 'bold' } }, grid: { display: false } }
       }
     }
   });
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
@@ -682,7 +675,6 @@ function formatDate(dateStr) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 setDefaultDate();
-render();
 </script>
 </body>
 </html>
