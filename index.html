@@ -623,7 +623,7 @@ document.getElementById('expenseForm').addEventListener('submit', e => {
   expensesRef.child(id).set({ id, title, category, amount, currency, payer, date });
 
   e.target.reset();
-  setDefaultDate();
+  document.getElementById('date').value = date;
   document.getElementById('title').focus();
 
   // restore toggles to last-used state
