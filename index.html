@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Expense Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --accent: #4f6ef7;
+    --accent2: #f7924f;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --red: #ef4444;
+    --green: #22c55e;
+    --cat-food: #f59e0b;
+    --cat-commute: #3b82f6;
+    --cat-leisure: #a855f7;
+    --J: #4f6ef7;
+    --C: #f7924f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--accent);
+    color: white;
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 2px 8px rgba(79,110,247,0.3);
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header span { font-size: 1.6rem; }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1.1rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* FORM */
+  form { display: flex; flex-direction: column; gap: 0.85rem; }
+
+  label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; display: block; }
+
+  input[type=text], input[type=number], select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--text);
+    background: #fafafa;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type=text]:focus, input[type=number]:focus, input[type=date]:focus, select:focus {
+    border-color: var(--accent);
+    background: #fff;
+  }
+
+  input[type=date] {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--text);
+    background: #fafafa;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  .currency-amount {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .payer-toggle { display: flex; gap: 0.5rem; }
+  .payer-btn {
+    flex: 1;
+    padding: 0.6rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #fafafa;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+  .payer-btn.active-J { border-color: var(--J); background: #eef1fe; color: var(--J); }
+  .payer-btn.active-C { border-color: var(--C); background: #fef3ea; color: var(--C); }
+
+  .cat-toggle { display: flex; gap: 0.5rem; }
+  .cat-btn {
+    flex: 1;
+    padding: 0.5rem 0.25rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #fafafa;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+  .cat-btn.active-food { border-color: var(--cat-food); background: #fef9ec; color: var(--cat-food); }
+  .cat-btn.active-commute { border-color: var(--cat-commute); background: #eff6ff; color: var(--cat-commute); }
+  .cat-btn.active-leisure { border-color: var(--cat-leisure); background: #faf5ff; color: var(--cat-leisure); }
+
+  .add-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    margin-top: 0.25rem;
+  }
+  .add-btn:hover { background: #3a58e0; }
+  .add-btn:active { transform: scale(0.98); }
+
+  /* RIGHT PANEL */
+  .right-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* SUMMARY PILLS */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+  .summary-pill {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    text-align: center;
+  }
+  .summary-pill .pill-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .summary-pill .pill-value { font-size: 1.3rem; font-weight: 800; margin-top: 0.2rem; }
+  .pill-J { color: var(--J); }
+  .pill-C { color: var(--C); }
+  .pill-total { color: var(--text); }
+
+  /* CHARTS */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 600px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* EXPENSES TABLE */
+  .expense-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .expense-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+    transition: border-color 0.15s;
+  }
+  .expense-item:hover { border-color: #cbd5e1; }
+
+  .cat-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-food { background: var(--cat-food); }
+  .dot-commute { background: var(--cat-commute); }
+  .dot-leisure { background: var(--cat-leisure); }
+
+  .expense-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
+  .expense-cat { font-size: 0.72rem; color: var(--muted); text-transform: capitalize; }
+
+  .expense-amount { font-weight: 700; font-size: 0.95rem; text-align: right; }
+  .expense-currency { font-size: 0.7rem; color: var(--muted); text-align: right; }
+
+  .payer-badge {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.8rem; flex-shrink: 0;
+  }
+  .badge-J { background: #eef1fe; color: var(--J); }
+  .badge-C { background: #fef3ea; color: var(--C); }
+
+  .delete-btn {
+    background: none; border: none; cursor: pointer;
+    color: #cbd5e1; font-size: 1.1rem; padding: 0.1rem 0.25rem;
+    border-radius: 4px; transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .delete-btn:hover { color: var(--red); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 2.5rem 1rem;
+    font-size: 0.9rem;
+  }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .section-header h2 { margin-bottom: 0; }
+  .count-badge {
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 20px;
+  }
+
+  .clear-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .filter-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+  .filter-chip {
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .totals-by-currency {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .currency-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    background: var(--bg);
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span>✈️</span>
+  <h1>Travel Expense Tracker</h1>
+</header>
+
+<main>
+  <!-- LEFT: ADD EXPENSE FORM -->
+  <div class="card">
+    <h2>➕ Add Expense</h2>
+    <form id="expenseForm">
+
+      <div>
+        <label>Title</label>
+        <input type="text" id="title" placeholder="e.g. Ramen in Shinjuku" autocomplete="off" required>
+      </div>
+
+      <div>
+        <label>Date</label>
+        <input type="date" id="date" required>
+      </div>
+
+      <div>
+        <label>Category</label>
+        <div class="cat-toggle">
+          <button type="button" class="cat-btn active-food" data-cat="food">🍜 Food</button>
+          <button type="button" class="cat-btn" data-cat="commute">🚇 Commute</button>
+          <button type="button" class="cat-btn" data-cat="leisure">🎡 Leisure</button>
+        </div>
+        <input type="hidden" id="category" value="food">
+      </div>
+
+      <div>
+        <label>Amount &amp; Currency</label>
+        <div class="currency-amount">
+          <input type="number" id="amount" placeholder="0.00" min="0" step="0.01" required>
+          <select id="currency">
+            <option value="CAD">🍁 CAD</option>
+            <option value="CNY">¥ YUAN</option>
+            <option value="JPY">¥ YEN</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label>Paid by</label>
+        <div class="payer-toggle">
+          <button type="button" class="payer-btn active-J" data-payer="J">J</button>
+          <button type="button" class="payer-btn" data-payer="C">C</button>
+        </div>
+        <input type="hidden" id="payer" value="J">
+      </div>
+
+      <button type="submit" class="add-btn">Add Expense</button>
+    </form>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- SUMMARY -->
+    <div class="summary-grid">
+      <div class="summary-pill">
+        <div class="pill-label">J Paid</div>
+        <div class="pill-value pill-J" id="totalJ">—</div>
+        <div class="totals-by-currency" id="totalJ-breakdown"></div>
+      </div>
+      <div class="summary-pill">
+        <div class="pill-label">C Paid</div>
+        <div class="pill-value pill-C" id="totalC">—</div>
+        <div class="totals-by-currency" id="totalC-breakdown"></div>
+      </div>
+      <div class="summary-pill">
+        <div class="pill-label">Expenses</div>
+        <div class="pill-value pill-total" id="totalCount">0</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="card">
+      <h2>📊 Breakdown</h2>
+      <div class="charts-grid">
+        <div>
+          <div style="font-size:0.75rem;font-weight:600;color:var(--muted);text-align:center;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.04em">By Category</div>
+          <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;font-weight:600;color:var(--muted);text-align:center;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.04em">J vs C</div>
+          <div class="chart-wrap"><canvas id="payerChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENSE LIST -->
+    <div class="card">
+      <div class="section-header">
+        <h2>🧾 Expenses</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <span class="count-badge" id="listCount">0</span>
+          <button class="clear-btn" onclick="clearAll()">Clear all</button>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <button class="filter-chip active" data-filter="all">All</button>
+        <button class="filter-chip" data-filter="food">🍜 Food</button>
+        <button class="filter-chip" data-filter="commute">🚇 Commute</button>
+        <button class="filter-chip" data-filter="leisure">🎡 Leisure</button>
+        <button class="filter-chip" data-filter="J">J</button>
+        <button class="filter-chip" data-filter="C">C</button>
+      </div>
+
+      <div class="expense-list" id="expenseList">
+        <div class="empty-state">
+          <div class="empty-icon">🗺️</div>
+          <div>No expenses yet.<br>Add your first one!</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+let expenses = JSON.parse(localStorage.getItem('travel_expenses') || '[]');
+let activeFilter = 'all';
+let catChart, payerChart;
+
+const CURRENCY_SYMBOLS = { CAD: 'CA$', CNY: '¥', JPY: '¥' };
+const CURRENCY_LABELS  = { CAD: 'CAD', CNY: 'YUAN', JPY: 'YEN' };
+
+function setDefaultDate() {
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('date').value = `2026-${mm}-${dd}`;
+}
+
+function save() {
+  localStorage.setItem('travel_expenses', JSON.stringify(expenses));
+}
+
+// ── FORM TOGGLES ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.className = 'cat-btn');
+    const cat = btn.dataset.cat;
+    btn.classList.add('active-' + cat);
+    document.getElementById('category').value = cat;
+  });
+});
+
+document.querySelectorAll('.payer-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.payer-btn').forEach(b => b.className = 'payer-btn');
+    const p = btn.dataset.payer;
+    btn.classList.add('active-' + p);
+    document.getElementById('payer').value = p;
+  });
+});
+
+// ── FILTER CHIPS ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeFilter = chip.dataset.filter;
+    renderList();
+  });
+});
+
+// ── FORM SUBMIT ───────────────────────────────────────────────────────────────
+document.getElementById('expenseForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const title    = document.getElementById('title').value.trim();
+  const category = document.getElementById('category').value;
+  const amount   = parseFloat(document.getElementById('amount').value);
+  const currency = document.getElementById('currency').value;
+  const payer    = document.getElementById('payer').value;
+  const date     = document.getElementById('date').value;
+
+  if (!title || isNaN(amount) || amount <= 0 || !date) return;
+
+  expenses.unshift({ id: Date.now(), title, category, amount, currency, payer, date });
+  save();
+  render();
+  e.target.reset();
+  setDefaultDate();
+  document.getElementById('title').focus();
+});
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+function deleteExpense(id) {
+  expenses = expenses.filter(e => e.id !== id);
+  save();
+  render();
+}
+
+function clearAll() {
+  if (expenses.length === 0) return;
+  if (confirm('Clear all expenses?')) {
+    expenses = [];
+    save();
+    render();
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  renderSummary();
+  renderCharts();
+  renderList();
+}
+
+function renderSummary() {
+  const totals = { J: {}, C: {} };
+  expenses.forEach(e => {
+    if (!totals[e.payer][e.currency]) totals[e.payer][e.currency] = 0;
+    totals[e.payer][e.currency] += e.amount;
+  });
+
+  ['J','C'].forEach(p => {
+    const entries = Object.entries(totals[p]);
+    if (entries.length === 0) {
+      document.getElementById('total'+p).textContent = '—';
+      document.getElementById('total'+p+'-breakdown').innerHTML = '';
+      return;
+    }
+    const primary = entries.sort((a,b) => b[1]-a[1])[0];
+    document.getElementById('total'+p).textContent =
+      CURRENCY_SYMBOLS[primary[0]] + primary[1].toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
+
+    document.getElementById('total'+p+'-breakdown').innerHTML = entries.map(([cur, amt]) =>
+      `<span class="currency-tag">${CURRENCY_LABELS[cur]}: ${CURRENCY_SYMBOLS[cur]}${amt.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2})}</span>`
+    ).join('');
+  });
+
+  document.getElementById('totalCount').textContent = expenses.length;
+  document.getElementById('listCount').textContent = expenses.length;
+}
+
+function renderList() {
+  const list = document.getElementById('expenseList');
+  let filtered = expenses;
+
+  if (activeFilter !== 'all') {
+    if (['food','commute','leisure'].includes(activeFilter)) {
+      filtered = expenses.filter(e => e.category === activeFilter);
+    } else {
+      filtered = expenses.filter(e => e.payer === activeFilter);
+    }
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">${expenses.length === 0 ? '🗺️' : '🔍'}</div><div>${expenses.length === 0 ? 'No expenses yet.<br>Add your first one!' : 'No matching expenses.'}</div></div>`;
+    return;
+  }
+
+  const CAT_ICONS = { food: '🍜', commute: '🚇', leisure: '🎡' };
+
+  list.innerHTML = filtered.map(e => `
+    <div class="expense-item">
+      <div class="cat-dot dot-${e.category}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="expense-title" title="${e.title}">${e.title}</div>
+        <div class="expense-cat">${CAT_ICONS[e.category]} ${e.category}${e.date ? ' · ' + formatDate(e.date) : ''}</div>
+      </div>
+      <div>
+        <div class="expense-amount">${CURRENCY_SYMBOLS[e.currency]}${e.amount.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2})}</div>
+        <div class="expense-currency">${CURRENCY_LABELS[e.currency]}</div>
+      </div>
+      <div class="payer-badge badge-${e.payer}">${e.payer}</div>
+      <button class="delete-btn" onclick="deleteExpense(${e.id})" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderCharts() {
+  // Category totals (count-based for cross-currency fairness)
+  const catCounts = { food: 0, commute: 0, leisure: 0 };
+  const payerCounts = { J: 0, C: 0 };
+  expenses.forEach(e => {
+    catCounts[e.category]++;
+    payerCounts[e.payer]++;
+  });
+
+  // Category chart
+  if (catChart) catChart.destroy();
+  catChart = new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Food', 'Commute', 'Leisure'],
+      datasets: [{
+        data: [catCounts.food, catCounts.commute, catCounts.leisure],
+        backgroundColor: ['#f59e0b', '#3b82f6', '#a855f7'],
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 11 }, padding: 10, usePointStyle: true }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}`
+          }
+        }
+      }
+    }
+  });
+
+  // Payer chart
+  if (payerChart) payerChart.destroy();
+  payerChart = new Chart(document.getElementById('payerChart'), {
+    type: 'bar',
+    data: {
+      labels: ['J', 'C'],
+      datasets: [{
+        label: 'Expenses',
+        data: [payerCounts.J, payerCounts.C],
+        backgroundColor: ['#4f6ef7', '#f7924f'],
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 11 } },
+          grid: { color: '#f0f4f8' }
+        },
+        x: {
+          ticks: { font: { size: 13, weight: 'bold' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+setDefaultDate();
+render();
+</script>
+</body>
+</html>
