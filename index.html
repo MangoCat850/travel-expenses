@@ -113,29 +113,6 @@
     background: #fff;
   }
 
-  .cur-toggle { display: flex; gap: 0.5rem; }
-  .cur-btn {
-    flex: 1;
-    padding: 0.55rem 0.25rem;
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    background: #fafafa;
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-    color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.1rem;
-    line-height: 1.2;
-  }
-  .cur-btn .cur-flag { font-size: 1rem; }
-  .cur-btn.active-CAD { border-color: #c8102e; background: #fff0f2; color: #c8102e; }
-  .cur-btn.active-CNY { border-color: #de2910; background: #fff5f5; color: #de2910; }
-  .cur-btn.active-JPY { border-color: #bc002d; background: #fff0f3; color: #bc002d; }
-
   .payer-toggle { display: flex; gap: 0.5rem; }
   .payer-btn {
     flex: 1;
@@ -427,21 +404,7 @@
         <input type="number" id="amount" placeholder="0.00" min="0" step="0.01" required>
       </div>
 
-      <div>
-        <label>Currency</label>
-        <div class="cur-toggle">
-          <button type="button" class="cur-btn active-CAD" data-cur="CAD">
-            <span class="cur-flag">🇨🇦</span>CAD
-          </button>
-          <button type="button" class="cur-btn" data-cur="CNY">
-            <span class="cur-flag">🇨🇳</span>YUAN
-          </button>
-          <button type="button" class="cur-btn" data-cur="JPY">
-            <span class="cur-flag">🇯🇵</span>YEN
-          </button>
-        </div>
-        <input type="hidden" id="currency" value="CAD">
-      </div>
+      <input type="hidden" id="currency" value="CAD">
 
       <div>
         <label>Paid by</label>
@@ -624,15 +587,7 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
   });
 });
 
-document.querySelectorAll('.cur-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    setActiveCurrency(btn.dataset.cur);
-  });
-});
-
 function setActiveCurrency(cur) {
-  document.querySelectorAll('.cur-btn').forEach(b => b.className = 'cur-btn');
-  document.querySelector(`.cur-btn[data-cur="${cur}"]`).classList.add('active-' + cur);
   document.getElementById('currency').value = cur;
 }
 
@@ -679,7 +634,6 @@ document.getElementById('expenseForm').addEventListener('submit', e => {
   document.querySelector(`.payer-btn[data-payer="${payer}"]`).classList.add('active-' + payer);
   document.getElementById('payer').value = payer;
 
-  setActiveCurrency(currency);
 });
 
 // ── DELETE / CLEAR ────────────────────────────────────────────────────────────
