@@ -602,6 +602,7 @@ document.querySelectorAll('.country-tab').forEach(tab => {
     if (tab.dataset.country !== 'all') {
       setActiveCurrency(TAB_TO_CUR[tab.dataset.country]);
     }
+    renderCharts();
     renderList();
   });
 });
@@ -760,9 +761,9 @@ function renderList() {
 }
 
 function renderCharts() {
-  const catCounts   = { food: 0, commute: 0, leisure: 0 };
-  const payerCounts = { J: 0, C: 0 };
-  expenses.forEach(e => { catCounts[e.category]++; payerCounts[e.payer]++; });
+  // Category doughnut — always uses all expenses
+  const catCounts = { food: 0, commute: 0, leisure: 0 };
+  expenses.forEach(e => { catCounts[e.category]++; });
 
   if (catChart) catChart.destroy();
   catChart = new Chart(document.getElementById('catChart'), {
@@ -784,22 +785,76 @@ function renderCharts() {
     }
   });
 
+  // Stacked bar — filter by active country tab, group by date
+  const chartExp = activeCountry === 'all'
+    ? expenses
+    : expenses.filter(e => e.currency === activeCountry);
+
+  const dateMap = {};
+  chartExp.forEach(e => {
+    if (!e.date) return;
+    if (!dateMap[e.date]) dateMap[e.date] = { J: 0, C: 0 };
+    dateMap[e.date][e.payer] += e.amount;
+  });
+
+  const sortedDates = Object.keys(dateMap).sort();
+  const dateLabels  = sortedDates.map(d => {
+    const [, m, day] = d.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${months[parseInt(m,10)-1]} ${parseInt(day,10)}`;
+  });
+  const jData = sortedDates.map(d => dateMap[d].J || 0);
+  const cData = sortedDates.map(d => dateMap[d].C || 0);
+
+  const curSym = activeCountry !== 'all' ? CURRENCY_SYMBOLS[activeCountry] : '';
+
   if (payerChart) payerChart.destroy();
   payerChart = new Chart(document.getElementById('payerChart'), {
     type: 'bar',
     data: {
-      labels: ['J', 'C'],
-      datasets: [{ label: 'Expenses', data: [payerCounts.J, payerCounts.C], backgroundColor: ['#4f6ef7', '#f7924f'], borderRadius: 8, borderSkipped: false }]
+      labels: dateLabels.length ? dateLabels : ['No data'],
+      datasets: [
+        {
+          label: 'J',
+          data: jData.length ? jData : [0],
+          backgroundColor: '#4f6ef7',
+          borderRadius: 0,
+          stack: 'payer'
+        },
+        {
+          label: 'C',
+          data: cData.length ? cData : [0],
+          backgroundColor: '#a855f7',
+          borderRadius: 0,
+          stack: 'payer'
+        }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} expense${ctx.raw !== 1 ? 's' : ''}` } }
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10, usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${curSym}${ctx.raw.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}`
+          }
+        }
       },
       scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f0f4f8' } },
-        x: { ticks: { font: { size: 13, weight: 'bold' } }, grid: { display: false } }
+        x: {
+          stacked: true,
+          ticks: { font: { size: 10 }, maxRotation: 45 },
+          grid: { display: false }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            font: { size: 10 },
+            callback: val => curSym + val.toLocaleString()
+          },
+          grid: { color: '#f0f4f8' }
+        }
       }
     }
   });
